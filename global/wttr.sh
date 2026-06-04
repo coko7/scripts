@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
-input="${1:-curry}"
+default='curry'
+input="${1:-}"
 entries=$(cat "$HOME/.local/scripts/data/geo-locations.json")
 
 detailed=0
 if [[ "$input" == *+ ]]; then
-  input="${input%+}"
   detailed=1
+  input="${input%+}"
 fi
 
-entry=$(jq --raw-output --arg input "$input" \
-  '.[] | select(.name == $input or (.aliases[]? == $input))' <<<"$entries")
+input="${input:-curry}"
+
+entry=$(jq --raw-output --arg input "$input" '
+  limit(1; .[] | select(.name == $input or (.aliases[]? == $input)))
+' <<<"$entries")
 
 if [[ -z "$entry" ]]; then
   echo "Error: location '$input' not found in geo-locations.json" >&2
