@@ -56,6 +56,11 @@ for cmd in claude git; do
   fi
 done
 
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+  echo "❌  Not a git repository. Please run this script inside a git repo." >&2
+  exit 1
+fi
+
 # ── Get staged diff ───────────────────────────────────────────────────────────
 DIFF=$(git diff --cached)
 
@@ -92,10 +97,11 @@ Respond with ONLY the commit message — no preamble, no markdown fences, no com
 Git diff:
 $DIFF"
 
-# ── Call Claude Code CLI ──────────────────────────────────────────────────────
-echo "🤖  Asking Claude to generate a commit message..." >&2
+SPIN_MSG="🤖 Asking Claude to generate a commit message..."
 
-COMMIT_MSG=$(echo "$PROMPT" | claude -p --output-format text 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+# ── Call Claude Code CLI ──────────────────────────────────────────────────────
+COMMIT_MSG=$(claude --print --output-format text 2>/dev/null <<<"$PROMPT" |
+  sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
 if [[ -z "$COMMIT_MSG" ]]; then
   echo "❌  Claude returned an empty response. Try running: claude -p 'say hi' to check your session." >&2
@@ -103,14 +109,7 @@ if [[ -z "$COMMIT_MSG" ]]; then
 fi
 
 # ── Output ────────────────────────────────────────────────────────────────────
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅  Generated commit message:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "$COMMIT_MSG"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -n "$COMMIT_MSG"
 
 # ── Optional: copy to clipboard ───────────────────────────────────────────────
 if [[ "$COPY" == true ]]; then
