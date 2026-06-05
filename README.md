@@ -1,5 +1,7 @@
 # 🛠️ scripts
 
+![screenshot of scripts](./banner.png)
+
 Here, I store my personal collection of shell scripts that I rely on everyday.
 For Linux automation, Hyprland WM, git workflows, fzf/rofi launchers, Jira integration, AI tooling and more...
 
