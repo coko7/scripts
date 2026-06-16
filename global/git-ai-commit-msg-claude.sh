@@ -97,10 +97,11 @@ Respond with ONLY the commit message — no preamble, no markdown fences, no com
 Git diff:
 $DIFF"
 
+CLAUDE_MODEL='claude-haiku-4-5-20251001'
 SPIN_MSG="🤖 Asking Claude to generate a commit message..."
 
 # ── Call Claude Code CLI ──────────────────────────────────────────────────────
-COMMIT_MSG=$(claude --print --output-format text 2>/dev/null <<<"$PROMPT" |
+COMMIT_MSG=$(claude --print --model "$CLAUDE_MODEL" --output-format text 2>/dev/null <<<"$PROMPT" |
   sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
 if [[ -z "$COMMIT_MSG" ]]; then
