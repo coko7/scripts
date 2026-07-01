@@ -11,4 +11,15 @@ hyprctl clients -j |
     'any(.[]; .class == $wm_class)' >/dev/null 2>&1 &&
   exit 1
 
-kitty --class "$full_wm_class" sh -c "$*"
+if [[ -n "$FLOATTY_CAPTURE_OUTPUT" ]]; then
+  tmpfile="$(mktemp)"
+  trap 'rm -f "$tmpfile"' EXIT
+
+  kitty --class "$full_wm_class" sh -c "$* > \"$tmpfile\""
+
+  if [[ -s "$tmpfile" ]]; then
+    cat "$tmpfile"
+  fi
+else
+  kitty --class "$full_wm_class" sh -c "$*"
+fi
