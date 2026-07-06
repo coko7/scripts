@@ -3,7 +3,7 @@
 # temp_monitor.sh - Poll temperature for a named location every 5 min,
 # send a desktop notification (notify-send) if it exceeds a threshold.
 #
-# Looks up lat/lon from $HOME/.local/scripts/data/geo-locations.json,
+# Looks up lat/lon from $HOME/.local/scripts/data/private/geo-locations.json,
 # matching on "name" or "aliases". Uses Open-Meteo (no API key) for
 # current temperature, and notify-send for desktop notifications.
 #
@@ -22,7 +22,7 @@ default='curry'
 input="${1:-}"
 threshold="${2:?Usage: $0 <location> <threshold_celsius> [+]}"
 
-entries=$(cat "$HOME/.local/scripts/data/geo-locations.json")
+entries=$(cat "$HOME/.local/scripts/data/private/geo-locations.json")
 
 detailed=0
 if [[ "$input" == *+ ]]; then
