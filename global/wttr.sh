@@ -2,7 +2,7 @@
 
 default='curry'
 input="${1:-}"
-entries=$(cat "$HOME/.local/scripts/data/geo-locations.json")
+entries=$(cat "$HOME/.local/scripts/data/private/geo-locations.json")
 
 detailed=0
 if [[ "$input" == *+ ]]; then
