@@ -15,8 +15,11 @@
 #   FORGEJO_TOKEN   - Forgejo access token with repo write permission
 #
 # Optional environment variables:
+#   GITHUB_ORG      - Mirror the repos of this GitHub organization instead of
+#                     your personal repos (you must be a member with access)
 #   FORGEJO_OWNER   - User or org on Forgejo to own the mirrors
-#                     (default: the user that owns FORGEJO_TOKEN)
+#                     (default: the user that owns FORGEJO_TOKEN; an org must
+#                     already exist on Forgejo)
 #   MIRROR_INTERVAL - Sync interval, e.g. "8h0m0s" (default: 8h0m0s)
 #   INCLUDE_FORKS   - Set to "true" to also mirror forks (default: false)
 #   DRY_RUN         - Set to "true" to only print what would happen
@@ -36,6 +39,7 @@ set -euo pipefail
 : "${FORGEJO_TOKEN:?FORGEJO_TOKEN is required}"
 
 FORGEJO_URL="${FORGEJO_URL%/}" # strip trailing slash
+GITHUB_ORG="${GITHUB_ORG:-}"
 MIRROR_INTERVAL="${MIRROR_INTERVAL:-8h0m0s}"
 INCLUDE_FORKS="${INCLUDE_FORKS:-false}"
 DRY_RUN="${DRY_RUN:-false}"
@@ -79,15 +83,34 @@ fi
 FORGEJO_OWNER="${FORGEJO_OWNER:-$FORGEJO_ME}"
 echo "    Forgejo user: ${FORGEJO_ME} (mirroring into: ${FORGEJO_OWNER})"
 
+# If mirroring into a different owner (usually an org), make sure it exists
+if [[ "$FORGEJO_OWNER" != "$FORGEJO_ME" ]]; then
+  owner_code="$(fj_api -o /dev/null -w '%{http_code}' "${FORGEJO_URL}/api/v1/orgs/${FORGEJO_OWNER}")"
+  if [[ "$owner_code" != "200" ]]; then
+    owner_code="$(fj_api -o /dev/null -w '%{http_code}' "${FORGEJO_URL}/api/v1/users/${FORGEJO_OWNER}")"
+  fi
+  if [[ "$owner_code" != "200" ]]; then
+    echo "ERROR: Forgejo owner '${FORGEJO_OWNER}' does not exist. Create the organization on Forgejo first." >&2
+    exit 1
+  fi
+fi
+
 # ----------------------------------------------------------------------------
-# Fetch all owned repos from GitHub (paginated)
+# Fetch repos from GitHub (paginated) - personal or organization
 # ----------------------------------------------------------------------------
 
-echo "==> Fetching repository list from GitHub..."
+if [[ -n "$GITHUB_ORG" ]]; then
+  echo "==> Fetching repository list for GitHub org '${GITHUB_ORG}'..."
+  LIST_URL="https://api.github.com/orgs/${GITHUB_ORG}/repos?type=all&per_page=100"
+else
+  echo "==> Fetching repository list from GitHub..."
+  LIST_URL="https://api.github.com/user/repos?affiliation=owner&per_page=100"
+fi
+
 ALL_REPOS="[]"
 page=1
 while :; do
-  batch="$(gh_api "https://api.github.com/user/repos?affiliation=owner&per_page=100&page=${page}")"
+  batch="$(gh_api "${LIST_URL}&page=${page}")"
   count="$(jq 'length' <<<"$batch")"
   [[ "$count" -eq 0 ]] && break
   ALL_REPOS="$(jq -s 'add' <(echo "$ALL_REPOS") <(echo "$batch"))"
