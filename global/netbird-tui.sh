@@ -31,7 +31,7 @@ connected() {
 current_profile() {
   # Active profile is usually marked with a '*'; fall back to 'default'
   $NB profile list 2>/dev/null |
-    awk '/\*/ {gsub(/\*/,""); print $1; found=1} END {if (!found) print "default"}'
+    awk '/✓/ {gsub(/✓/,""); print $1; found=1} END {if (!found) print "default"}'
 }
 
 notify() {
@@ -122,7 +122,7 @@ connect* | disconnect*)
 profile*)
   profile=$($NB profile list 2>/dev/null |
     tail -n +2 |
-    sed 's/\*//g' |
+    sed 's/✓//g' |
     awk 'NF {print $1}' |
     fzf-rofi.sh --prompt="profile > " \
       --layout=reverse \
