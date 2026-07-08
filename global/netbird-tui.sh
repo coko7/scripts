@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# nb — fzf-driven NetBird helper
+# netbird-tui — fzf-driven NetBird helper
 #
 # Fuzzy-pick an action (profile select / connect|disconnect / status),
 # with a live preview pane showing connection state + netbird version.
 #
 # Requirements: netbird, fzf
-# Usage: just run `nb`
+# Usage: just run `netbird-tui`
 
 set -euo pipefail
 
@@ -31,24 +31,37 @@ connected() {
 }
 
 current_profile() {
-  # Active profile is usually marked with a '*'; fall back to 'default'
+  # Active profile is marked with a '✓'; fall back to 'default'
   $NB profile list 2>/dev/null |
     awk '/✓/ {gsub(/✓/,""); print $1; found=1} END {if (!found) print "default"}'
 }
 
 notify() {
-  # notify up|down — desktop toast via ntfy-toast.sh + waybar state file
+  # notify up|down|switch — desktop toast via ntfy-toast.sh + waybar state file
   local verb sound
-  if [[ "$1" == "up" ]]; then
+  case "$1" in
+  switch)
+    # own message + sound; state file / waybar untouched (the reconnect's
+    # `notify up` handles those with the new profile name)
+    ntfy-toast.sh Netbird \
+      "Switched to profile \"$(current_profile)\" 🔀" \
+      netbird.png \
+      'ntfy-netbird-sig-down' \
+      "/usr/share/sounds/freedesktop/stereo/dialog-information.oga" || true
+    return
+    ;;
+  up)
     verb="Connected to"
     sound="service-login"
-    current_profile >"$VPN_STATE_FILE" # <-- new
-  else
+    current_profile >"$VPN_STATE_FILE"
+    ;;
+  down)
     verb="Disconnected from"
     sound="service-logout"
-    rm --force "$VPN_STATE_FILE" # <-- new
-  fi
-  pkill -RTMIN+8 waybar || true # <-- new
+    rm --force "$VPN_STATE_FILE"
+    ;;
+  esac
+  pkill -RTMIN+8 waybar || true
   ntfy-toast.sh Netbird \
     "${verb} Netbird — \"$(current_profile)\" 👋" \
     netbird.png \
@@ -133,7 +146,7 @@ choice=$(printf '%s\n' "$menu" | fzf-rofi.sh \
 case "$choice" in
 connect* | disconnect*)
   $NB "$toggle_cmd"
-  notify "$toggle_cmd" # <-- new
+  notify "$toggle_cmd"
   echo
   $NB status | head -10
   ;;
@@ -153,11 +166,12 @@ profile*)
 
   $NB down 2>/dev/null || true
   $NB profile select "$profile"
+  notify switch # <-- new
   echo "Switched to profile: $profile"
 
   if $was_connected; then
     $NB up
-    notify up # <-- new
+    notify up
     echo
     $NB status | head -10
   fi
