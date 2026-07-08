@@ -12,6 +12,8 @@ set -euo pipefail
 
 NB="${NB:-netbird}"
 VPN_STATE_FILE="${VPN_STATE_FILE:-$HOME/.cache/vpn-state}"
+IMG_CONNECT="${IMG_CONNECT:-$HOME/Pictures/Memes/bitconnect-connect.png}"
+IMG_DISCONNECT="${IMG_DISCONNECT:-$HOME/Pictures/Memes/disappear-leave.png}"
 
 # If the daemon socket needs root and we aren't, prefix with sudo.
 if ! "$NB" status &>/dev/null && command -v sudo &>/dev/null && sudo -n true 2>/dev/null; then
@@ -54,6 +56,15 @@ notify() {
     "/usr/share/sounds/freedesktop/stereo/${sound}.oga" || true
 }
 
+show_image() {
+  # kitty graphics inside fzf needs --unicode-placeholder;
+  # the sed dance strips the trailing newline + resets colors (fzf quirk)
+  kitten icat --clear --transfer-mode=memory --stdin=no \
+    --unicode-placeholder \
+    --place="${FZF_PREVIEW_COLUMNS}x$((FZF_PREVIEW_LINES - 7))@0x0" \
+    "$1" | sed '$d' | sed $'$s/$/\e[m/'
+}
+
 # ---------------------------------------------------------------------------
 # Preview pane (invoked by fzf as: $0 --preview <highlighted-action>)
 # ---------------------------------------------------------------------------
@@ -76,6 +87,14 @@ if [[ "${1:-}" == "--preview" ]]; then
   profile*)
     echo "Available profiles:"
     $NB profile list 2>/dev/null || echo "  (profile support requires netbird >= 0.52)"
+    ;;
+  connect*)
+    [[ -f "$IMG_CONNECT" ]] && show_image "$IMG_CONNECT" ||
+      echo "image not found: $IMG_CONNECT"
+    ;;
+  disconnect*)
+    [[ -f "$IMG_DISCONNECT" ]] && show_image "$IMG_DISCONNECT" ||
+      echo "image not found: $IMG_DISCONNECT"
     ;;
   *)
     $NB status 2>/dev/null | head -20 || echo "daemon not reachable"
