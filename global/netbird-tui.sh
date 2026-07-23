@@ -110,15 +110,19 @@ if [[ "${1:-}" == "--preview" ]]; then
     $NB profile list 2>/dev/null || echo "  (profile support requires netbird >= 0.52)"
     ;;
   routes*)
-    route_id="${3:-}"
-    if [[ -n "$route_id" ]]; then
-      $NB routes list 2>/dev/null | awk -v id="$route_id" '
-        /^  - ID:/ { line=$0; sub(/^  - ID: /, "", line); printing=(line==id) }
-        printing   { print }
-      '
+    if ! connected; then
+      echo "not connected — connect to netbird to see routes"
     else
-      echo "Available routes:"
-      $NB routes list 2>/dev/null || echo "  (route support requires netbird >= 0.36)"
+      route_id="${3:-}"
+      if [[ -n "$route_id" ]]; then
+        $NB routes list 2>/dev/null | awk -v id="$route_id" '
+          /^  - ID:/ { line=$0; sub(/^  - ID: /, "", line); printing=(line==id) }
+          printing   { print }
+        '
+      else
+        echo "Available routes:"
+        $NB routes list 2>/dev/null || echo "  (route support requires netbird >= 0.36)"
+      fi
     fi
     ;;
   connect*)
