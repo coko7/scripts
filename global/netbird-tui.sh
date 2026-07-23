@@ -50,6 +50,14 @@ notify() {
       "/usr/share/sounds/freedesktop/stereo/dialog-information.oga" || true
     return
     ;;
+  routes)
+    ntfy-toast.sh Netbird \
+      "$2" \
+      netbird.png \
+      'ntfy-netbird-sig-down' \
+      "/usr/share/sounds/freedesktop/stereo/dialog-information.oga" || true
+    return
+    ;;
   up)
     verb="Connected to"
     sound="service-login"
@@ -102,8 +110,16 @@ if [[ "${1:-}" == "--preview" ]]; then
     $NB profile list 2>/dev/null || echo "  (profile support requires netbird >= 0.52)"
     ;;
   routes*)
-    echo "Available routes:"
-    $NB routes list 2>/dev/null || echo "  (route support requires netbird >= 0.36)"
+    route_id="${3:-}"
+    if [[ -n "$route_id" ]]; then
+      $NB routes list 2>/dev/null | awk -v id="$route_id" '
+        /^  - ID:/ { line=$0; sub(/^  - ID: /, "", line); printing=(line==id) }
+        printing   { print }
+      '
+    else
+      echo "Available routes:"
+      $NB routes list 2>/dev/null || echo "  (route support requires netbird >= 0.36)"
+    fi
     ;;
   connect*)
     [[ -f "$IMG_CONNECT" ]] && show_image "$IMG_CONNECT" ||
@@ -199,30 +215,30 @@ routes*)
   fi
 
   # Multi-select the routes that should end up Selected; the final set replaces
-  # the current selection (netbird's default `select` mode). IDs may contain
-  # spaces, so keep the raw ID in its own tab-delimited field (col 1) and only
-  # display the pretty column (col 2) — never split on whitespace to recover it.
+  # the current selection (netbird's default `select` mode). List shows raw IDs
+  # only (may contain spaces — read whole lines, never split on whitespace);
+  # the preview pane resolves the highlighted ID to its full route details.
   selected=$(printf '%s\n' "${rows[@]}" |
-    awk -F'\t' '{printf "%s\t%-8s %-30s %s\n", $1, $2, $3, $4}' |
+    awk -F'\t' '{print $1}' |
     fzf-rofi.sh --prompt="routes > " \
       --multi \
-      --delimiter='\t' \
-      --with-nth=2 \
       --layout=reverse \
       --header="TAB to toggle, ENTER to apply" \
-      --preview="'$0' --preview routes" \
+      --preview="'$0' --preview routes {}" \
       --preview-window=right,55%,wrap) || exit 0
 
   ids=()
-  while IFS=$'\t' read -r id _; do
+  while IFS= read -r id; do
     [[ -n "$id" ]] && ids+=("$id")
   done <<<"$selected"
 
   if ((${#ids[@]} == 0)); then
     $NB routes deselect all
+    notify routes "All routes deselected 🛣️"
     echo "All routes deselected."
   else
     $NB routes select "${ids[@]}"
+    notify routes "Selected routes: ${ids[*]} 🛣️"
     echo "Selected routes: ${ids[*]}"
   fi
   ;;
