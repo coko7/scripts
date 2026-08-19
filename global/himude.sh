@@ -33,7 +33,8 @@ function encrypt() {
     exit 1
   fi
 
-  out_file=$(gum input --prompt="Encrypted filename> " --value "secret.gpg")
+  default_name="$(echo "$in_dir" | tr -d '/').gpg"
+  out_file=$(gum input --prompt="Encrypted filename> " --value "$default_name")
   if [ -z "$out_file" ]; then
     exit 1
   fi
