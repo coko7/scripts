@@ -9,7 +9,10 @@ full_wm_class="floater-kitty-$wm_class_suffix"
 hyprctl clients -j |
   jq --exit-status --arg wm_class "$full_wm_class" \
     'any(.[]; .class == $wm_class)' >/dev/null 2>&1 &&
-  exit 1
+  {
+    ntfy-toast.sh 'floater-kitty' "⚠️ Floater already opened!" kitty "$wm_class_suffix" "$HOME/Music/sounds/nope.wav"
+    exit 1
+  }
 
 if [[ -n "$FLOATTY_CAPTURE_OUTPUT" ]]; then
   tmpfile="$(mktemp)"
